@@ -1,5 +1,6 @@
 import time
 import random
+import utils
 
 # ==================================== GENERATE CLI  ====================================
 def input_cli():
@@ -11,18 +12,6 @@ def input_cli():
     max_sequence_size = int(input("Ukuran Maksimal Sekuens [4] : ") or "4")
 
     return num_tokens, tokens, buffer_size, matrix_size, num_sequences, max_sequence_size
-
-def save_to_file(buffer_size, matrix, num_sequences, sequences, filename):
-    with open(filename, "w") as file:
-        file.write(str(buffer_size) + "\n")
-        file.write(str(len(matrix)) + ' ' + str(len(matrix[0])) + "\n")
-        for row in matrix:
-            file.write(" ".join(row) + "\n")
-
-        file.write(str(num_sequences) + '\n')
-        for sequence, reward in sequences.items():
-            file.write(" ".join(sequence) + "\n")
-            file.write(str(reward) + "\n")
 
 def generate_matrix(matrix_size, tokens):
     matrix = []
@@ -59,38 +48,9 @@ def generate_cli():
     is_write = input("\nApakah ingin menyimpan Matriks & sekuens permainan (beserta dengan bobot hadiahnya)? (y/n) ")
     if is_write == 'y' or is_write == 'Y':
         file_name = input('Masukkan nama file untuk disimpan: ')
-        save_to_file(buffer_size, matrix, num_sequences, sequences, 'test/' + file_name + '.txt')
+        utils.save_to_file(buffer_size, matrix, num_sequences, sequences, 'test/' + file_name + '.txt')
 
 # ==================================== INPUT FILE ====================================
-def read_file(filename):
-    try:
-        with open(filename, 'r') as file:
-            buffer_size = int(file.readline())
-            matrix_width, matrix_height = map(int, file.readline().split())
-            matrix = [file.readline().split() for _ in range(matrix_height)]
-            number_of_sequences = int(file.readline())
-
-            sequence_reward = {}
-            for _ in range(number_of_sequences):
-                sequence = tuple(file.readline().split())
-                reward = int(file.readline())
-                sequence_reward[sequence] = reward
-
-        return buffer_size, matrix_width, matrix_height, matrix, sequence_reward
-
-    except FileNotFoundError:
-        print("File not found.")
-    except Exception as e:
-        print("An error occurred:", e)
-
-def write_file(matrix, max_reward, max_path, time_ms, filename):
-    with open(filename, "w") as file:
-        file.write(str(max_reward) + '\n')
-        file.write(' '.join(coordinates_to_elements(matrix, max_path))  + '\n')
-        for x, y in max_path:
-            file.write(f'{y+1}, {x+1}\n')
-        file.write(f'\n{str(time_ms)} ms\n')
-
 def coordinates_to_elements(matrix, coordinates):
     elements_combination = []
     for row, col in coordinates:
@@ -111,18 +71,20 @@ def breach_protocol(buffer_size, matrix, sequences):
 
     def generate_combinations(matrix_height, matrix_width, buffer_size):
         def backtrack(combination, buffer_size):
+            valid_combinations = []
             if len(combination) >= 1 and combination[0][0] == 0:
-                yield combination[:]
+                valid_combinations.append(combination[:])
             if len(combination) == buffer_size:
-                return
+                return valid_combinations
             for row in range(matrix_height):
                 for col in range(matrix_width):
                     if not any(row == r and col == c for r, c in combination):
                         if not combination or row == combination[-1][0] or col == combination[-1][1]:
                             if len(combination) < 2 or (len(combination) >= 2 and combination[0][1] == combination[1][1] and combination[-2][0] != row and combination[-2][1] != col):
-                                yield from backtrack(combination + [(row, col)], buffer_size)
+                                valid_combinations.extend(backtrack(combination + [(row, col)], buffer_size))
+            return valid_combinations
 
-        return list(backtrack([], buffer_size))
+        return backtrack([], buffer_size)
 
     def calculate_reward(combination, sequence):
         reward = 0
@@ -131,7 +93,7 @@ def breach_protocol(buffer_size, matrix, sequences):
                 reward += sequence[key]
         return reward
 
-    def search_path(combinations, sequence, matrix):
+    def search_optimal_path(combinations, sequence, matrix):
         paths = {}
         max_reward = 0
         max_path = []
@@ -150,7 +112,7 @@ def breach_protocol(buffer_size, matrix, sequences):
     combinations = generate_combinations(rows, cols, buffer_size)
     time_ms = round((time.time() - start_time) * 1000)
 
-    paths, max_reward, max_path = search_path(combinations, sequence, matrix)
+    paths, max_reward, max_path = search_optimal_path(combinations, sequence, matrix)
 
     return paths, max_reward, max_path, time_ms
 
@@ -166,7 +128,7 @@ def main(buffer_size, matrix, sequences):
     is_write = input("Apakah ingin menyimpan solusi? (y/n) ")
     if is_write == 'y' or is_write == 'Y':
         file_name = input("\nMasukkan nama file (.txt): ")
-        write_file(matrix, max_reward, max_path, time_ms, f'test/{file_name}.txt')
+        utils.write_file(matrix, max_reward, max_path, time_ms, f'test/{file_name}.txt')
 
 if __name__ == "__main__":
     print('\n==================================')
@@ -187,7 +149,7 @@ if __name__ == "__main__":
 
         if method == 1:
             file_path = input("Masukkan nama file input: ")
-            data = read_file(f'test/{file_path}.txt')
+            data = utils.read_file(f'test/{file_path}.txt')
             main(data[0], data[3], data[4])
         elif method == 2:
             generate_cli()
