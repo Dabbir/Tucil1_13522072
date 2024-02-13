@@ -10,8 +10,7 @@ Program ini tidak perlu dikompilasi karena menggunakan bahasa pemrograman Python
 3. Pindahkan file main.exe ke root folder jika tidak bisa
 
 atau jalankan python file pada Command Line biasa dengan
-1. cd ke src
-2. Jalankan perintah python/python3 main.py
+1. Jalankan perintah python src/main.py atau python3 src/main.py
 
 Setelah itu ikuti perintah yang ada pada program. Dengan asumsi masukan benar.
 
